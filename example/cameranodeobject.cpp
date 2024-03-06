@@ -25,35 +25,35 @@ CameraNodeObject::CameraNodeObject(QObject *parent) :
     m_pitch(0),
     m_zoom(1)
 {
-    Ogre::SceneManager *sceneManager = Ogre::Root::getSingleton().getSceneManager("mySceneManager");
+    Ogre::SceneManagerInstanceMap sceneManagerSelection = Ogre::Root::getSingleton().getSceneManagers();
+    Ogre::SceneManager *sceneManager = sceneManagerSelection.begin()->second;
 
     // let's use the current memory address to create a unique name
     QString instanceName;
     instanceName.sprintf("camera_%08p", this);
 
-    Ogre::Camera *camera = sceneManager->createCamera(instanceName.toLatin1().data());
-    camera->setNearClipDistance(1);
-    camera->setFarClipDistance(99999);
-    camera->setAspectRatio(1);
-    camera->setAutoTracking(true, sceneManager->getRootSceneNode());
+    m_cameraNode = sceneManager->getRootSceneNode()->createChildSceneNode();
+    m_camera = sceneManager->createCamera(instanceName.toLatin1().data());
+    m_camera->setNearClipDistance(1);
+    m_camera->setFarClipDistance(99999);
+    m_camera->setAspectRatio(1);
+    //m_cameraNode->setAutoTracking(true, sceneManager->getRootSceneNode());
 
-    m_camera = camera;
-    m_node = sceneManager->getRootSceneNode()->createChildSceneNode();
-    m_node->attachObject(camera);
-    camera->move(initialPosition);
+    m_cameraNode->attachObject(m_camera);
+    m_cameraNode->setPosition(initialPosition);
 }
 
 void CameraNodeObject::updateRotation()
 {
-    m_node->resetOrientation();
-    m_node->yaw(Ogre::Radian(Ogre::Degree(m_yaw)));
-    m_node->pitch(Ogre::Radian(Ogre::Degree(m_pitch)));
+    m_cameraNode->resetOrientation();
+    m_cameraNode->yaw(Ogre::Radian(Ogre::Degree(m_yaw)));
+    m_cameraNode->pitch(Ogre::Radian(Ogre::Degree(m_pitch)));
 }
 
 void CameraNodeObject::setZoom(qreal z)
 {
     m_zoom = z;
-    m_node->resetOrientation();
-    m_camera->setPosition(initialPosition * (1 / m_zoom));
+    // m_cameraNode->resetOrientation();
+    m_cameraNode->setPosition(initialPosition * (1 / m_zoom));
     updateRotation();
 }

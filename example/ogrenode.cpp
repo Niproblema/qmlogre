@@ -1,20 +1,20 @@
-#ifdef JIBO_GL
+//#ifdef JIBO_GL
 #include <RenderSystems/GL/OgreGLFBORenderTexture.h>
 #include <RenderSystems/GL/OgreGLFrameBufferObject.h>
 #include <RenderSystems/GL/OgreGLTexture.h>
 typedef Ogre::GLFrameBufferObject OgreFrameBufferObject;
 typedef Ogre::GLTexture OgreTexture;
 typedef Ogre::GLFBOManager OgreFBOManager;
-#endif
+//#endif
 
-#ifdef JIBO_GLES2
-#include <RenderSystems/GLES2/OgreGLES2FBORenderTexture.h>
-#include <RenderSystems/GLES2/OgreGLES2FrameBufferObject.h>
-#include <RenderSystems/GLES2/OgreGLES2Texture.h>
-typedef Ogre::GLES2FrameBufferObject OgreFrameBufferObject;
-typedef Ogre::GLES2Texture OgreTexture;
-typedef Ogre::GLES2FBOManager OgreFBOManager;
-#endif
+//#ifdef JIBO_GLES2
+//#include <RenderSystems/GLES2/OgreGLES2FBORenderTexture.h>
+//#include <RenderSystems/GLES2/OgreGLES2FrameBufferObject.h>
+//#include <RenderSystems/GLES2/OgreGLES2Texture.h>
+//typedef Ogre::GLES2FrameBufferObject OgreFrameBufferObject;
+//typedef Ogre::GLES2Texture OgreTexture;
+//typedef Ogre::GLES2FBOManager OgreFBOManager;
+//#endif
 
 #include "ogrenode.h"
 
@@ -90,7 +90,7 @@ GLuint OgreNode::getOgreFboId()
     manager->bind(m_renderTarget);
 
     GLint id;
-    glGetIntegerv(GL_FRAMEBUFFER_BINDING, &id);
+    m_ogreEngineItem->ogreContext()->functions()->glGetIntegerv(GL_FRAMEBUFFER_BINDING, &id);
 
     return id;
 }

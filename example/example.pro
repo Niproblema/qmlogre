@@ -15,8 +15,8 @@ SOURCES += main.cpp \
     ogreitem.cpp \
     ogrenode.cpp \
     ogrecamerawrapper.cpp \
-    ogreengine.cpp
-
+    ogreengine.cpp \
+    glad.c
 
 HEADERS += cameranodeobject.h \
     exampleapp.h \
@@ -28,24 +28,30 @@ HEADERS += cameranodeobject.h \
 OTHER_FILES += \
     resources/example.qml
 
+# Adjust to your OGRE installation path either here in as environment variable
+# /usr/local equates to /usr/local/include/OGRE, /usr/local/lib/OGRE installation
+OGRE_HOME = /usr/local      
 
 OGREDIR = $$OGRE_HOME
 message(Using Ogre libraries in $$OGREDIR)
 INCLUDEPATH += $$OGREDIR/include/OGRE
 
 ARCH = $$ARCH
-contains(ARCH, "ARM") {
-    message(Building for ARM architecture)
-    DEFINES += JIBO_GLES2
-    INCLUDEPATH += $$OGREDIR/include/OGRE/RenderSystems/GLES2
-}
 contains(ARCH, "x86") {
     DEFINES += JIBO_GL
     INCLUDEPATH += $$OGREDIR/include/OGRE/RenderSystems/GL
 }
 #QMAKE_LFLAGS += -F$$OGREDIR/lib/release
 LIBS += -L$$OGREDIR/lib \
-        -lOgreMain
+        -lOgreMain  \
+        -lGL \
+        -lGLU \
+        -lX11 \
+        -lXxf86vm \
+        -lXrandr \
+        -pthread \
+        -lXi \
+        -ldl
 
 RESOURCES += resources/resources.qrc
 
@@ -63,3 +69,5 @@ INSTALLS += Resources Config
 DISTFILES += \
     plugins.cfg \
     resource.cfg
+
+QMAKE_POST_LINK += $$QMAKE_COPY_DIR $$PWD/resources $$OUT_PWD && $$QMAKE_COPY_DIR $$PWD/config/* $$OUT_PWD

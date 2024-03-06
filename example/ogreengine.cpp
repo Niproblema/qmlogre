@@ -12,6 +12,9 @@
 
 #include <QOpenGLFunctions>
 
+#include <OgreFileSystemLayer.h>
+#include <OgreFileSystem.h>
+
 OgreEngine::OgreEngine(QQuickWindow *window)
     : QObject(),
       m_resources_cfg(Ogre::StringUtil::BLANK)
@@ -33,7 +36,7 @@ Ogre::Root* OgreEngine::startEngine()
 
     activateOgreContext();
 
-    Ogre::Root *ogreRoot = new Ogre::Root;
+    Ogre::Root *ogreRoot = new Ogre::Root("plugins.cfg");
     Ogre::RenderSystemList list = ogreRoot->getAvailableRenderers();
     ogreRoot->setRenderSystem(list[0]);
     ogreRoot->initialise(false);
@@ -56,7 +59,7 @@ Ogre::Root* OgreEngine::startEngine()
 void OgreEngine::stopEngine(Ogre::Root *ogreRoot)
 {
     if (ogreRoot) {
-//        m_root->detachRenderTarget(m_renderTexture);
+        //        m_root->detachRenderTarget(m_renderTexture);
         // TODO tell node(s) to detach
 
     }
@@ -84,8 +87,8 @@ void OgreEngine::setQuickWindow(QQuickWindow *window)
 
 void OgreEngine::activateOgreContext()
 {
-//    glPopAttrib();
-//    glPopClientAttrib();
+    //    glPopAttrib();
+    //    glPopClientAttrib();
 
     m_qtContext->functions()->glUseProgram(0);
     m_qtContext->doneCurrent();
@@ -101,25 +104,25 @@ void OgreEngine::doneOgreContext()
     m_ogreContext->functions()->glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
     // unbind all possible remaining buffers; just to be on safe side
-//    m_ogreContext->functions()->glBindBuffer(GL_ARRAY_BUFFER, 0);
-//    m_ogreContext->functions()->glBindBuffer(GL_ATOMIC_COUNTER_BUFFER, 0);
-//    m_ogreContext->functions()->glBindBuffer(GL_COPY_READ_BUFFER, 0);
-//    m_ogreContext->functions()->glBindBuffer(GL_COPY_WRITE_BUFFER, 0);
-//    m_ogreContext->functions()->glBindBuffer(GL_DRAW_INDIRECT_BUFFER, 0);
-//    m_ogreContext->functions()->glBindBuffer(GL_DISPATCH_INDIRECT_BUFFER, 0);
-//    m_ogreContext->functions()->glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-//    m_ogreContext->functions()->glBindBuffer(GL_PIXEL_PACK_BUFFER, 0);
-//    m_ogreContext->functions()->glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
-//    m_ogreContext->functions()->glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
-//    m_ogreContext->functions()->glBindBuffer(GL_TEXTURE_BUFFER, 0);
-//    m_ogreContext->functions()->glBindBuffer(GL_TRANSFORM_FEEDBACK_BUFFER, 0);
-//    m_ogreContext->functions()->glBindBuffer(GL_UNIFORM_BUFFER, 0);
+    //    m_ogreContext->functions()->glBindBuffer(GL_ARRAY_BUFFER, 0);
+    //    m_ogreContext->functions()->glBindBuffer(GL_ATOMIC_COUNTER_BUFFER, 0);
+    //    m_ogreContext->functions()->glBindBuffer(GL_COPY_READ_BUFFER, 0);
+    //    m_ogreContext->functions()->glBindBuffer(GL_COPY_WRITE_BUFFER, 0);
+    //    m_ogreContext->functions()->glBindBuffer(GL_DRAW_INDIRECT_BUFFER, 0);
+    //    m_ogreContext->functions()->glBindBuffer(GL_DISPATCH_INDIRECT_BUFFER, 0);
+    //    m_ogreContext->functions()->glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+    //    m_ogreContext->functions()->glBindBuffer(GL_PIXEL_PACK_BUFFER, 0);
+    //    m_ogreContext->functions()->glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
+    //    m_ogreContext->functions()->glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
+    //    m_ogreContext->functions()->glBindBuffer(GL_TEXTURE_BUFFER, 0);
+    //    m_ogreContext->functions()->glBindBuffer(GL_TRANSFORM_FEEDBACK_BUFFER, 0);
+    //    m_ogreContext->functions()->glBindBuffer(GL_UNIFORM_BUFFER, 0);
 
     m_ogreContext->doneCurrent();
 
     m_qtContext->makeCurrent(m_quickWindow);
-//    glPushAttrib(GL_ALL_ATTRIB_BITS);
-//    glPushClientAttrib(GL_CLIENT_ALL_ATTRIB_BITS);
+    //    glPushAttrib(GL_ALL_ATTRIB_BITS);
+    //    glPushClientAttrib(GL_CLIENT_ALL_ATTRIB_BITS);
 }
 
 QOpenGLContext* OgreEngine::ogreContext() const
@@ -134,28 +137,48 @@ QSGTexture* OgreEngine::createTextureFromId(uint id, const QSize &size, QQuickWi
 
 void OgreEngine::setupResources(void)
 {
-    // Load resource paths from config file
     Ogre::ConfigFile cf;
     cf.load(m_resources_cfg);
+    auto& rgm = Ogre::ResourceGroupManager::getSingleton();
 
-    // Go through all sections & settings in the file
-    Ogre::ConfigFile::SectionIterator seci = cf.getSectionIterator();
-
-    Ogre::String secName, typeName, archName;
-    while (seci.hasMoreElements())
-    {
-        secName = seci.peekNextKey();
-        Ogre::ConfigFile::SettingsMultiMap *settings = seci.getNext();
-        Ogre::ConfigFile::SettingsMultiMap::iterator i;
-        for (i = settings->begin(); i != settings->end(); ++i)
+    Ogre::String sec, type, arch;
+    // go through all specified resource groups
+    for(auto& s : cf.getSettingsBySection()) {
+        sec = s.first;
+        // go through all resource paths
+        for (auto& t : s.second)
         {
-            typeName = i->first;
-            archName = i->second;
+            type = t.first;
+            arch = t.second;
 
-            Ogre::ResourceGroupManager::getSingleton().addResourceLocation(
-                archName, typeName, secName);
+            Ogre::StringUtil::trim(arch);
+            if (arch.empty() || arch[0] == '.')
+            {
+                // resolve relative path with regards to configfile
+                Ogre::String baseDir, filename;
+                Ogre::StringUtil::splitFilename(m_resources_cfg, filename, baseDir);
+                arch = baseDir + arch;
+            }
+
+            arch = Ogre::FileSystemLayer::resolveBundlePath(arch);
+
+            if((type == "Zip" || type == "FileSystem") && !Ogre::FileSystemLayer::fileExists(arch))
+            {
+                Ogre::LogManager::getSingleton().logWarning("resource location '"+arch+"' does not exist - skipping");
+                continue;
+            }
+
+            rgm.addResourceLocation(arch, type, sec);
         }
     }
 
+    if(rgm.getResourceLocationList(Ogre::RGN_INTERNAL).empty())
+    {
+        const auto& mediaDir = Ogre::FileSystemLayer::resolveBundlePath("/usr/local/share/OGRE-14.2/Media");
+        // add default locations
+        rgm.addResourceLocation(mediaDir + "/Main", "FileSystem", Ogre::RGN_INTERNAL);
+        rgm.addResourceLocation(mediaDir + "/Terrain", "FileSystem", Ogre::RGN_INTERNAL);
+        rgm.addResourceLocation(mediaDir + "/RTShaderLib", "FileSystem", Ogre::RGN_INTERNAL);
+    }
     Ogre::ResourceGroupManager::getSingleton().initialiseAllResourceGroups();
 }

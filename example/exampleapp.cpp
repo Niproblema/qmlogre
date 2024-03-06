@@ -63,10 +63,12 @@ void ExampleApp::initializeOgre()
     m_ogreEngine->setupResources();
 
     // set up Ogre scene
-    m_sceneManager = m_root->createSceneManager(Ogre::ST_GENERIC, "mySceneManager");
+    m_sceneManager = m_root->createSceneManager();
 
     m_sceneManager->setAmbientLight(Ogre::ColourValue(0.3, 0.3, 0.3));
-    m_sceneManager->createLight("myLight")->setPosition(20, 80, 50);
+    Ogre::SceneNode* lightNode = m_sceneManager->createSceneNode();
+    lightNode->setPosition(20,80,50);
+    lightNode->attachObject(m_sceneManager->createLight("myLight"));
 
     // Resources with textures must be loaded within Ogre's GL context
     m_ogreEngine->activateOgreContext();
